@@ -1,20 +1,10 @@
-async function upload({
-  url,
-  buffer,
-  base64
-}) {
-  const response = await fetch(`https://api.anything.com/v0/upload`, {
-    method: "POST",
-    headers: {
-      "Content-Type": buffer ? "application/octet-stream" : "application/json"
-    },
-    body: buffer ? buffer : JSON.stringify({ base64, url })
-  });
-  const data = await response.json();
-  return {
-    url: data.url,
-    mimeType: data.mimeType || null
-  };
+async function upload({ url, buffer, base64 } = {}) {
+  // TODO: Replace with your own upload solution (e.g. Uploadcare, Cloudinary, S3)
+  // The previous implementation used api.anything.com which is no longer available.
+  if (url) {
+    return { url, mimeType: null };
+  }
+  throw new Error('Upload not configured. Set up your own upload endpoint.');
 }
 export { upload };
 export default upload;

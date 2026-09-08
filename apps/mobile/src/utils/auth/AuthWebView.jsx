@@ -10,7 +10,7 @@ const callbackQueryString = `callbackUrl=${callbackUrl}`;
 /**
  * This renders a WebView for authentication and handles both web and native platforms.
  */
-export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
+export const AuthWebView = ({ mode, baseURL }) => {
   const [currentURI, setURI] = useState(`${baseURL}/account/${mode}?${callbackQueryString}`);
   const { auth, setAuth, isReady } = useAuthStore();
   const isAuthenticated = isReady ? !!auth : null;
@@ -34,9 +34,10 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
     if (typeof window === 'undefined' || !window.addEventListener) {
       return;
     }
+    const baseOrigin = baseURL ? new URL(baseURL).origin : null;
     const handleMessage = (event) => {
       // Verify the origin for security
-      if (event.origin !== process.env.EXPO_PUBLIC_PROXY_BASE_URL) {
+      if (baseOrigin && event.origin !== baseOrigin) {
         return;
       }
       if (event.data.type === 'AUTH_SUCCESS') {
@@ -54,7 +55,7 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [setAuth]);
+  }, [baseURL, setAuth]);
 
   if (Platform.OS === 'web') {
     const handleIframeError = () => {
@@ -65,7 +66,7 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
       <iframe
         ref={iframeRef}
         title="Authentication"
-        src={`${proxyURL}/account/${mode}?callbackUrl=/api/auth/expo-web-success`}
+        src={`${baseURL}/account/${mode}?callbackUrl=/api/auth/expo-web-success`}
         style={{ width: '100%', height: '100%', border: 'none' }}
         onError={handleIframeError}
       />
@@ -78,10 +79,7 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
         uri: currentURI,
       }}
       headers={{
-        'x-createxyz-project-group-id': process.env.EXPO_PUBLIC_PROJECT_GROUP_ID,
         host: process.env.EXPO_PUBLIC_HOST,
-        'x-forwarded-host': process.env.EXPO_PUBLIC_HOST,
-        'x-createxyz-host': process.env.EXPO_PUBLIC_HOST,
       }}
       onShouldStartLoadWithRequest={(request) => {
         if (request.url === `${baseURL}${callbackUrl}`) {
@@ -107,13 +105,11 @@ export const AuthWebView = ({ mode, proxyURL, baseURL }) => {
         // Add query string properly by checking if URL already has parameters
         const hasParams = request.url.includes('?');
         const separator = hasParams ? '&' : '?';
-        const newURL = request.url.replaceAll(proxyURL, baseURL);
-        if (newURL.endsWith(callbackUrl)) {
-          setURI(newURL);
+        if (`${request.url}${separator}${callbackQueryString}`.startsWith(`${baseURL}/account/`)) {
+          setURI(`${request.url}${separator}${callbackQueryString}`);
           return false;
         }
-        setURI(`${newURL}${separator}${callbackQueryString}`);
-        return false;
+        return true;
       }}
       style={{ flex: 1 }}
     />

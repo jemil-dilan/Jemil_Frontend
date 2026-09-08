@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { fetch as expoFetch } from 'expo/fetch';
 
 const originalFetch = fetch;
-const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
+const authKey = process.env.EXPO_PUBLIC_AUTH_KEY || 'jemil-auth-jwt';
 
 const getURLFromArgs = (...args: Parameters<typeof fetch>) => {
   const [urlArg] = args;
@@ -28,14 +28,9 @@ const isFirstPartyURL = (url: string) => {
   );
 };
 
-const isSecondPartyURL = (url: string) => {
-  return url.startsWith('/_create/');
-};
-
 type Params = Parameters<typeof expoFetch>;
-const fetchToWeb = async function fetchWithHeaders(...args: Params) {
+const fetchToApi = async function fetchWithHeaders(...args: Params) {
   const firstPartyURL = process.env.EXPO_PUBLIC_BASE_URL;
-  const secondPartyURL = process.env.EXPO_PUBLIC_PROXY_BASE_URL;
   const [input, init] = args;
   const url = getURLFromArgs(input, init);
   if (!url) {
@@ -53,28 +48,14 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   }
 
   let finalInput = input;
-  const baseURL = isSecondPartyURL(url) ? secondPartyURL : firstPartyURL;
   if (typeof input === 'string') {
-    finalInput = input.startsWith('/') ? `${baseURL}${input}` : input;
+    finalInput = input.startsWith('/') ? `${firstPartyURL}${input}` : input;
   } else {
     return expoFetch(input, init);
   }
 
   const initHeaders = init?.headers ?? {};
   const finalHeaders = new Headers(initHeaders);
-
-  const headers = {
-    'x-createxyz-project-group-id': process.env.EXPO_PUBLIC_PROJECT_GROUP_ID,
-    host: process.env.EXPO_PUBLIC_HOST,
-    'x-forwarded-host': process.env.EXPO_PUBLIC_HOST,
-    'x-createxyz-host': process.env.EXPO_PUBLIC_HOST,
-  };
-
-  for (const [key, value] of Object.entries(headers)) {
-    if (value) {
-      finalHeaders.set(key, value);
-    }
-  }
 
   const auth = await SecureStore.getItemAsync(authKey)
     .then((auth) => {
@@ -94,4 +75,4 @@ const fetchToWeb = async function fetchWithHeaders(...args: Params) {
   });
 };
 
-export default fetchToWeb;
+export default fetchToApi;

@@ -1,18 +1,16 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('node:path');
-const fs = require('node:fs');
 const { FileStore } = require('metro-cache');
-const { reportErrorToRemote } = require('./__create/report-error-to-remote');
-const {
-  handleResolveRequestError,
-  VIRTUAL_ROOT,
-  VIRTUAL_ROOT_UNRESOLVED,
-} = require('./__create/handle-resolve-request-error');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
 config.maxWorkers = 6;
+config.resolver.unstable_enableSymlinks = false;
+config.experiments = {
+  ...config.experiments,
+  tsconfigPaths: true,
+};
 
 const WEB_ALIASES = {
   'expo-secure-store': path.resolve(__dirname, './polyfills/web/secureStore.web.ts'),
@@ -59,7 +57,7 @@ const NATIVE_ALIASES = {
 // Aliases that only apply outside production. The real packages crash on
 // import in Expo Go preview (their browser-mode shims pull in DOM-only code
 // that throws on Hermes), which makes expo-router silently swallow the load
-// error and warn "Route is missing the required default export" — leaving
+// error and warn "Route is missing the required default export" -- leaving
 // the app on a black/splash screen. EAS production builds keep the real
 // modules so paid users hit the native SDKs as normal.
 const DEV_ONLY_NATIVE_ALIASES = {
@@ -71,8 +69,6 @@ const DEV_ONLY_NATIVE_ALIASES = {
 const SHARED_ALIASES = {
   'expo-image': path.resolve(__dirname, './polyfills/shared/expo-image.tsx'),
 };
-fs.mkdirSync(VIRTUAL_ROOT_UNRESOLVED, { recursive: true });
-config.watchFolders = [...config.watchFolders, VIRTUAL_ROOT, VIRTUAL_ROOT_UNRESOLVED];
 
 // Add web-specific alias configuration through resolveRequest
 config.resolver.resolveRequest = (context, moduleName, platform) => {
@@ -85,21 +81,17 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     ) {
       return context.resolveRequest(context, moduleName, platform);
     }
+    // Wildcard alias from tsconfig: "@/*" -> "./src/*"
+    if (moduleName.startsWith('@/')) {
+      return context.resolveRequest(
+        context,
+        path.resolve(__dirname, 'src', moduleName.slice(2)),
+        platform
+      );
+    }
     // Wildcard alias for Expo Google Fonts
     if (moduleName.startsWith('@expo-google-fonts/') && moduleName !== '@expo-google-fonts/dev') {
       return context.resolveRequest(context, '@expo-google-fonts/dev', platform);
-    }
-    // Resolve AnythingMenu to empty component in production
-    if (moduleName === './src/__create/anything-menu') {
-      const isProduction = process.env.EXPO_PUBLIC_CREATE_ENV === 'PRODUCTION';
-      if (isProduction) {
-        // Create empty component for production
-        const emptyComponentPath = path.resolve(
-          __dirname,
-          './polyfills/shared/empty-component.tsx'
-        );
-        return context.resolveRequest(context, emptyComponentPath, platform);
-      }
     }
     if (SHARED_ALIASES[moduleName] && !moduleName.startsWith('./polyfills/')) {
       return context.resolveRequest(context, SHARED_ALIASES[moduleName], platform);
@@ -115,11 +107,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     if (NATIVE_ALIASES[moduleName] && !moduleName.startsWith('./polyfills/')) {
       return context.resolveRequest(context, NATIVE_ALIASES[moduleName], platform);
     }
-    if (
-      DEV_ONLY_NATIVE_ALIASES[moduleName] &&
-      !moduleName.startsWith('./polyfills/') &&
-      process.env.EXPO_PUBLIC_CREATE_ENV !== 'PRODUCTION'
-    ) {
+    if (DEV_ONLY_NATIVE_ALIASES[moduleName] && !moduleName.startsWith('./polyfills/')) {
       return context.resolveRequest(
         context,
         DEV_ONLY_NATIVE_ALIASES[moduleName],
@@ -128,7 +116,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     }
     return context.resolveRequest(context, moduleName, platform);
   } catch (error) {
-    return handleResolveRequestError({ error, context, platform, moduleName });
+    throw error;
   }
 };
 
@@ -141,27 +129,6 @@ config.cacheStores = () => [
 ];
 config.resetCache = false;
 config.fileMapCacheDirectory = cacheDir;
-config.reporter = {
-  ...config.reporter,
-  update: (event) => {
-    config.reporter?.update(event);
-    const reportableErrors = [
-      'error',
-      'bundling_error',
-      'cache_read_error',
-      'hmr_client_error',
-      'transformer_load_failed',
-    ];
-    for (const errorType of reportableErrors) {
-      if (event.type === errorType) {
-        reportErrorToRemote({ error: event.error }).catch((reportError) => {
-          // no-op
-        });
-      }
-    }
-    return event;
-  },
-};
 
 const originalGetTransformOptions = config.transformer.getTransformOptions;
 
@@ -169,6 +136,7 @@ config.transformer = {
   ...config.transformer,
   getTransformOptions: async (entryPoints, options) => {
     if (options.dev === false) {
+      const fs = require('node:fs');
       fs.rmSync(cacheDir, { recursive: true, force: true });
       fs.mkdirSync(cacheDir);
     }

@@ -7,9 +7,6 @@ export const RETRY_ATTEMPTS = 3;
 export const RETRY_DELAY_MS = 1500;
 
 export const getRevenueCatAPIKey = () => {
-  if (process.env.EXPO_PUBLIC_CREATE_ENV === 'DEVELOPMENT') {
-    return process.env.EXPO_PUBLIC_REVENUE_CAT_TEST_STORE_API_KEY;
-  }
   return Platform.select({
     ios: process.env.EXPO_PUBLIC_REVENUE_CAT_APP_STORE_API_KEY,
     android: process.env.EXPO_PUBLIC_REVENUE_CAT_PLAY_STORE_API_KEY,
