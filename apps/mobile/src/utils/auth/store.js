@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 
-export const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
+export const authKey = process.env.EXPO_PUBLIC_AUTH_KEY || 'jemil-auth-jwt';
 
 /**
  * Explicit Keychain options used on every SecureStore call in the auth flow.
@@ -16,11 +16,11 @@ export const authKey = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-jwt`;
  *   first-unlock window, which is the most common TestFlight failure mode.
  * - requireAuthentication: false keeps SecureStore on its non-biometric code
  *   path, so it never reads NSFaceIDUsageDescription or constructs a
- *   biometry-current-set access control object — both of which can throw
+ *   biometry-current-set access control object -- both of which can throw
  *   NSException and trip iOS 26's unhandled async-void TurboModule rethrow.
  */
 export const secureStoreOptions = {
-  keychainService: 'anything-auth',
+  keychainService: 'jemil-auth',
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
   requireAuthentication: false,
 };
@@ -38,7 +38,7 @@ export const useAuthStore = create((set) => ({
         JSON.stringify(auth),
         secureStoreOptions,
       ).catch(() => {
-        // Swallow Keychain write errors — the app remains in-memory authed
+        // Swallow Keychain write errors -- the app remains in-memory authed
         // for this session and the next launch will re-auth via the WebView.
         // Throwing here would propagate into the unhandled-rejection /
         // TurboModule rethrow path and crash on iOS 26.x.

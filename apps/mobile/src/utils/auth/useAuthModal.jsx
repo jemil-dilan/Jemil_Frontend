@@ -1,10 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Modal, View } from 'react-native';
-import { create } from 'zustand';
-import { useCallback, useMemo } from 'react';
 import { AuthWebView } from './AuthWebView';
 import { useAuthStore, useAuthModal } from './store';
-
 
 /**
  * This component renders a modal for authentication purposes.
@@ -33,10 +30,8 @@ export const AuthModal = () => {
   const { isOpen, mode } = useAuthModal();
   const { auth } = useAuthStore();
 
-  const snapPoints = useMemo(() => ['100%'], []);
-  const proxyURL = process.env.EXPO_PUBLIC_PROXY_BASE_URL;
   const baseURL = process.env.EXPO_PUBLIC_BASE_URL;
-  if (!proxyURL && !baseURL) {
+  if (!baseURL) {
     return null;
   }
 
@@ -60,7 +55,6 @@ export const AuthModal = () => {
       >
         <AuthWebView
           mode={mode}
-          proxyURL={proxyURL}
           baseURL={baseURL}
         />
       </View>

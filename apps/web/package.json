@@ -2,8 +2,14 @@
 	"name": "web",
 	"private": true,
 	"type": "module",
+	"engines": {
+		"node": ">=20.0.0"
+	},
 	"scripts": {
 		"dev": "react-router dev",
+		"build": "react-router build",
+		"start": "node ./build/server/index.js",
+		"vercel-build": "react-router build",
 		"typecheck": "react-router typegen && tsc --noEmit"
 	},
 	"dependencies": {

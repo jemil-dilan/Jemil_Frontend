@@ -1,6 +1,8 @@
 {
   "expo": {
-    "name": "Anything mobile app",
+    "name": "JEMIL",
+    "slug": "jemil",
+    "scheme": "jemil",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -8,6 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.jemil.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -21,7 +24,7 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "package": "xyz.create.CreateExpoEnvironment"
+      "package": "com.jemil.app"
     },
     "plugins": [
       [

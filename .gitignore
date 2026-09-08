@@ -17,4 +17,8 @@ psd
 thumb
 sketch
 
+# IDEs
+.idea/
+.vscode/
+
 # End of https://www.toptal.com/developers/gitignore/api/react
